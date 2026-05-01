@@ -1,0 +1,26 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+
+# Données sensibles
+*.env
+config.py
+secrets.txt
+
+# Données générées
+historique.csv
+
+# Build PyInstaller
+build/
+dist/
+*.spec
+
+# VS Code
+.vscode/
+
+# Système
+Thumbs.db
+.DS_Store
+
+scraper.py
