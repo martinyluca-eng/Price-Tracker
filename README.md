@@ -26,11 +26,13 @@ Application desktop en Python qui surveille en continu le prix de produits Amazo
 
 ## 📦 Installation
 
-### Prérequis
-- Python 3.10 ou supérieur
-- Un compte Gmail avec mot de passe d'application
+### Option 1 — Utiliser l'exécutable (utilisateurs)
 
-### Étapes
+Téléchargez la dernière version du `.exe` depuis la page [Releases](https://github.com/martinyluca-eng/Price-Tracker/releases) et lancez-la directement. Aucune installation nécessaire.
+
+### Option 2 — Lancer depuis le code source (développeurs)
+
+Prérequis : Python 3.10 ou supérieur
 
 ```bash
 # Cloner le dépôt
