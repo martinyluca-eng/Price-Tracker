@@ -23,6 +23,7 @@ Application desktop en Python qui surveille en continu le prix de produits Amazo
 - **Requests** — requêtes HTTP
 - **smtplib** — envoi d'emails
 - **PyInstaller** — création de l'exécutable Windows
+- **SQLite** — Persistance des données
 
 ## 📦 Installation
 
