@@ -8,6 +8,9 @@ from datetime import datetime
 import time
 import smtplib
 from email.message import EmailMessage
+import database
+
+# Application
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -38,7 +41,9 @@ class TrackerApp(ctk.CTk):
         self.produits = []
         self.surveillance_active = False
         self.thread_surveillance = None
+        database.init_db()
         self._construire_interface()
+        self._charger_produits()
 
     def _construire_interface(self):
         ctk.CTkLabel(self, text="Price Tracker", font=ctk.CTkFont(size=28, weight="bold")).pack(pady=20)
@@ -84,6 +89,16 @@ class TrackerApp(ctk.CTk):
         self.log_box = ctk.CTkTextbox(self, height=100, state="disabled")
         self.log_box.pack(padx=20, pady=5, fill="x")
 
+    def _charger_produits(self):
+        """Charge les produits depuis la base au démarrage."""
+        self.produits = database.lister_produits()
+        for produit in self.produits:
+            produit["email"] = ""
+            produit["mdp"] = ""
+            self._rafraichir_liste()
+            if self.produits:
+                self._log(f"{len(self.produits)} produit(s) chargé(s) depuis la base")
+
     def _log(self, message):
         self.log_box.configure(state="normal")
         maintenant = datetime.now().strftime("%H:%M:%S")
@@ -119,7 +134,7 @@ class TrackerApp(ctk.CTk):
         self.produits.append(produit)
         self._rafraichir_liste()
         self._log(f"{nom} ajoute a la surveillance.")
-
+        produit["id"] = database.ajouter_produit(nom, url, prix)
         self.input_nom.delete(0, "end")
         self.input_url.delete(0, "end")
         self.input_prix.delete(0, "end")
@@ -153,7 +168,7 @@ class TrackerApp(ctk.CTk):
                     break
                 prix, prix_brut = self._recuperer_prix(produit["url"])
                 if prix is not None:
-                    self._sauvegarder(produit["nom"], prix_brut)
+                    database.enregistrer_prix(produit["id"], prix)
                     if prix <= produit["prix_cible"]:
                         self._log(f"{produit['nom']} : {prix:.2f} euros - Prix cible atteint !")
                         self._envoyer_alerte(produit, prix)
@@ -181,12 +196,6 @@ class TrackerApp(ctk.CTk):
         except Exception as e:
             self._log(f"Erreur : {e}")
             return None, None
-
-    def _sauvegarder(self, nom, prix_brut):
-        maintenant = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open("historique.csv", "a", newline="", encoding="utf-8") as fichier:
-            writer = csv.writer(fichier)
-            writer.writerow([maintenant, nom, prix_brut])
 
     def _envoyer_alerte(self, produit, prix):
         try:
