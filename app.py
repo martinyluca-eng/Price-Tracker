@@ -9,6 +9,8 @@ import time
 import smtplib
 from email.message import EmailMessage
 import database
+import webbrowser
+import security
 
 # Application
 
@@ -32,15 +34,21 @@ HEADERS = {
 }
 
 class TrackerApp(ctk.CTk):
-    def __init__(self):
+    def __init__(self, user_id, email, mdp_gmail):
         super().__init__()
-        self.title("Price Tracker")
+        self.title(f"Price Tracker - {email}")
         self.geometry("800x700")
         self.minsize(800, 700)
         self.resizable(True, True)
+    # Infos de l'utilisateur connecté
+        self.user_id = user_id
+        self.user_email = email
+        self.user_mdp_gmail = mdp_gmail
+
         self.produits = []
         self.surveillance_active = False
         self.thread_surveillance = None
+
         database.init_db()
         self._construire_interface()
         self._charger_produits()
@@ -65,23 +73,15 @@ class TrackerApp(ctk.CTk):
         self.input_prix = ctk.CTkEntry(frame_form, width=400, placeholder_text="Ex: 650")
         self.input_prix.grid(row=3, column=1, padx=10, pady=5)
 
-        ctk.CTkLabel(frame_form, text="Email").grid(row=4, column=0, padx=10, pady=5, sticky="w")
-        self.input_email = ctk.CTkEntry(frame_form, width=400, placeholder_text="ton_email@gmail.com")
-        self.input_email.grid(row=4, column=1, padx=10, pady=5)
-
-        ctk.CTkLabel(frame_form, text="Mot de passe app Gmail").grid(row=5, column=0, padx=10, pady=5, sticky="w")
-        self.input_mdp = ctk.CTkEntry(frame_form, width=400, placeholder_text="xxxx xxxx xxxx xxxx", show="*")
-        self.input_mdp.grid(row=5, column=1, padx=10, pady=5)
-
-        ctk.CTkButton(frame_form, text="+ Ajouter le produit", command=self._ajouter_produit).grid(row=6, column=0, columnspan=2, pady=15)
+        ctk.CTkButton(frame_form, text="+ Ajouter le produit", command=self._ajouter_produit).grid(row=4, column=0, columnspan=2, pady=15)
 
         frame_liste = ctk.CTkFrame(self)
         frame_liste.pack(padx=20, pady=5, fill="both", expand=True)
 
         ctk.CTkLabel(frame_liste, text="Produits surveilles", font=ctk.CTkFont(size=14, weight="bold")).pack(pady=10)
 
-        self.liste_texte = ctk.CTkTextbox(frame_liste, height=150, state="disabled")
-        self.liste_texte.pack(padx=10, pady=5, fill="both", expand=True)
+        self.liste_frame = ctk.CTkScrollableFrame(frame_liste, height=200)
+        self.liste_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
         self.bouton_surveillance = ctk.CTkButton(self, text="Demarrer la surveillance", fg_color="green", hover_color="darkgreen", command=self._toggle_surveillance)
         self.bouton_surveillance.pack(pady=10)
@@ -90,14 +90,11 @@ class TrackerApp(ctk.CTk):
         self.log_box.pack(padx=20, pady=5, fill="x")
 
     def _charger_produits(self):
-        """Charge les produits depuis la base au démarrage."""
-        self.produits = database.lister_produits()
-        for produit in self.produits:
-            produit["email"] = ""
-            produit["mdp"] = ""
-            self._rafraichir_liste()
-            if self.produits:
-                self._log(f"{len(self.produits)} produit(s) chargé(s) depuis la base")
+        """Charge les produits de l'utilisateur connecté."""
+        self.produits = database.lister_produits(self.user_id)
+        self._rafraichir_liste()
+        if self.produits:
+            self._log(f"{len(self.produits)} produit(s) chargé(s).")
 
     def _log(self, message):
         self.log_box.configure(state="normal")
@@ -111,10 +108,8 @@ class TrackerApp(ctk.CTk):
         nom = self.input_nom.get().strip()
         url = self.input_url.get().strip()
         prix = self.input_prix.get().strip()
-        email = self.input_email.get().strip()
-        mdp = self.input_mdp.get().strip()
 
-        if not nom or not url or not prix or not email or not mdp:
+        if not nom or not url or not prix:
             self._log("Remplis tous les champs !")
             return
 
@@ -128,23 +123,106 @@ class TrackerApp(ctk.CTk):
             "nom": nom,
             "url": url,
             "prix_cible": prix,
-            "email": email,
-            "mdp": mdp,
         }
+
+        produit["id"] = database.ajouter_produit(self.user_id, nom, url, prix)
         self.produits.append(produit)
         self._rafraichir_liste()
         self._log(f"{nom} ajoute a la surveillance.")
-        produit["id"] = database.ajouter_produit(nom, url, prix)
+
         self.input_nom.delete(0, "end")
         self.input_url.delete(0, "end")
         self.input_prix.delete(0, "end")
 
     def _rafraichir_liste(self):
-        self.liste_texte.configure(state="normal")
-        self.liste_texte.delete("1.0", "end")
+        for widget in self.liste_frame.winfo_children():
+            widget.destroy()
+
         for i, p in enumerate(self.produits, 1):
-            self.liste_texte.insert("end", f"{i}. {p['nom']} — cible : {p['prix_cible']:.2f} euros\n")
-        self.liste_texte.configure(state="disabled")
+            carte = ctk.CTkFrame(self.liste_frame)
+            carte.pack(fill="x", padx=5, pady=5)
+
+            info = f"{i}. {p['nom']} — cible : {p['prix_cible']:.2f} euros"
+            ctk.CTkLabel(carte, text=info, anchor="w").pack(side="left", padx=10, pady=5, fill="x", expand=True)
+            
+            bouton_suppr = ctk.CTkButton(
+                 carte,
+                 text="Supprimer",
+                 width=100,
+                 fg_color="red",
+                 hover_color="darkred",
+                 command=lambda p=p: self._supprimer_produit(p)
+                 )
+            bouton_suppr.pack(side="right", padx=5, pady=5)
+
+            bouton_modif = ctk.CTkButton(
+                carte,
+                text="Modifier",
+                width=100,
+                fg_color="orange",
+                hover_color="darkorange",
+                command=lambda p=p: self._ouvrir_modification(p)
+                )
+            bouton_modif.pack(side="right", padx=5, pady=5)
+
+            bouton = ctk.CTkButton(
+                carte,
+                text="Voir sur Amazon",
+                width=140,
+                command=lambda url=p["url"]: webbrowser.open(url)
+                )
+            bouton.pack(side="right", padx=10, pady=5)
+
+    def _ouvrir_modification(self, produit):
+        popup = ctk.CTkToplevel(self)
+        popup.title(f"Modifier : {produit['nom']}")
+        popup.geometry("500x400")
+        popup.transient(self)        
+        popup.grab_set()              
+        
+        ctk.CTkLabel(popup, text="Modifier le produit", font=ctk.CTkFont(size=16, weight="bold")).pack(pady=15)
+        ctk.CTkLabel(popup, text="Nom du produit").pack(pady=(10, 0))
+        input_nom = ctk.CTkEntry(popup, width=400)
+        input_nom.insert(0, produit["nom"])
+        input_nom.pack(pady=5)
+
+    
+        ctk.CTkLabel(popup, text="Prix cible (euros)").pack(pady=(10, 0))
+        input_prix = ctk.CTkEntry(popup, width=400)
+        input_prix.insert(0, str(produit["prix_cible"]))
+        input_prix.pack(pady=5)
+
+    
+        def sauvegarder():
+            nouveau_nom = input_nom.get().strip()
+            nouveau_prix = input_prix.get().strip()
+
+            if not nouveau_nom or not nouveau_prix:
+                return
+            
+            try:
+                nouveau_prix = float(nouveau_prix)
+            except ValueError:
+                self._log("Le prix doit etre un nombre !")
+                return
+            
+            produit["nom"] = nouveau_nom
+            produit["prix_cible"] = nouveau_prix
+            
+            database.ajouter_produit(nouveau_nom, produit["url"], nouveau_prix)
+            
+            self._rafraichir_liste()
+            self._log(f"{nouveau_nom} mis a jour")
+            popup.destroy()
+        
+        ctk.CTkButton(popup, text="Enregistrer", command=sauvegarder).pack(pady=20)
+
+    def _supprimer_produit(self, produit):
+        if "id" in produit:
+            database.supprimer_produit(produit["id"])
+            self.produits.remove(produit)
+            self._rafraichir_liste()
+            self._log(f"{produit['nom']} supprime")
 
     def _toggle_surveillance(self):
         if not self.surveillance_active:
@@ -201,16 +279,28 @@ class TrackerApp(ctk.CTk):
         try:
             msg = EmailMessage()
             msg["Subject"] = f"Prix cible atteint : {produit['nom']}"
-            msg["From"] = produit["email"]
-            msg["To"] = produit["email"]
+            msg["From"] = self.user_email
+            msg["To"] = self.user_email
             msg.set_content(f"{produit['nom']} est a {prix:.2f} euros !\nPrix cible : {produit['prix_cible']:.2f} euros\n\n{produit['url']}")
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
-                smtp.login(produit["email"], produit["mdp"])
+                smtp.login(self.user_email, self.user_mdp_gmail)
                 smtp.send_message(msg)
             self._log("Email envoye !")
         except Exception as e:
             self._log(f"Erreur email : {e}")
 
 if __name__ == "__main__":
-    app = TrackerApp()
-    app.mainloop()
+    import database
+    from login_window import LoginWindow
+
+    # Initialiser la base AVANT l'écran de login
+    database.init_db()
+
+    # Afficher la fenêtre de login
+    login = LoginWindow()
+    login.mainloop()
+
+    # Si l'utilisateur s'est connecté avec succès, lancer l'app principale
+    if login.user_id is not None:
+        app = TrackerApp(login.user_id, login.email, login.mdp_gmail)
+        app.mainloop()
