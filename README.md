@@ -1,65 +1,86 @@
 # 🛒 Amazon Price Tracker
 
-Application Windows de surveillance automatique des prix sur Amazon avec alertes email.
+Application Windows multi-utilisateurs de surveillance automatique des prix sur Amazon avec alertes email.
 
 ## 📋 Description
 
-Application desktop en Python qui surveille en continu le prix de produits Amazon et envoie une alerte email dès que le prix cible est atteint. Interface graphique intuitive permettant d'ajouter, surveiller et gérer plusieurs produits simultanément.
+Application desktop sécurisée en Python qui permet à plusieurs utilisateurs de surveiller leurs propres listes de produits Amazon. Chaque compte est isolé, les mots de passe sont hashés et les identifiants Gmail chiffrés. Interface graphique moderne avec authentification, gestion CRUD complète et alertes email automatiques.
 
 ## ✨ Fonctionnalités
 
+- 🔐 **Système d'authentification** : création de compte et connexion sécurisée
+- 👥 **Multi-utilisateurs** : chaque compte a ses propres produits, isolés des autres
 - 🔍 Surveillance simultanée de plusieurs produits Amazon
 - 📧 Alertes email automatiques quand le prix cible est atteint
-- 💾 Historique des prix sauvegardé en CSV
+- 💾 Base de données SQLite structurée avec relations
+- ✏️ Édition et suppression des produits via interface
+- 🔗 Lien cliquable vers chaque produit Amazon
 - 🖥️ Interface graphique moderne (CustomTkinter)
 - ⏱️ Vérification automatique à intervalles réguliers
 - 🛡️ Gestion des blocages anti-bot d'Amazon
+
+## 🔐 Sécurité
+
+- Mots de passe utilisateurs **hashés** avec sel aléatoire (SHA-256)
+- Mots de passe Gmail **chiffrés** avec Fernet (cryptography)
+- Isolation des données entre utilisateurs (clés étrangères SQL)
+- Clé de chiffrement stockée localement (`secret.key`), ignorée par Git
 
 ## 🛠️ Technologies
 
 - **Python 3.14** — langage principal
 - **CustomTkinter** — interface graphique
+- **SQLite3** — base de données
 - **BeautifulSoup4** — parsing HTML
 - **Requests** — requêtes HTTP
 - **smtplib** — envoi d'emails
+- **cryptography** — chiffrement Fernet
+- **hashlib** — hash sécurisé des mots de passe
 - **PyInstaller** — création de l'exécutable Windows
-- **SQLite** — Persistance des données
+
+## 🏗️ Architecture
+
+tracker-prix/
+app.py              # Interface principale
+login_window.py     # Fenêtre d'authentification
+database.py         # Gestion de la base SQLite
+auth.py             # Logique d'authentification
+security.py         # Hash et chiffrement
+README.md
+.gitignore
 
 ## 📦 Installation
 
 ### Option 1 — Utiliser l'exécutable (utilisateurs)
 
-Téléchargez la dernière version du `.exe` depuis la page [Releases](https://github.com/martinyluca-eng/Price-Tracker/releases) et lancez-la directement. Aucune installation nécessaire.
+Téléchargez la dernière version du `.exe` depuis la page [Releases](https://github.com/martinyluca-eng/Price-Tracker/releases) et lancez-la directement.
 
 ### Option 2 — Lancer depuis le code source (développeurs)
 
-Prérequis : Python 3.10 ou supérieur
-
 ```bash
-# Cloner le dépôt
 git clone https://github.com/martinyluca-eng/Price-Tracker.git
 cd Price-Tracker
 
-# Créer un environnement virtuel
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 
-# Installer les dépendances
-pip install requests beautifulsoup4 customtkinter
+pip install requests beautifulsoup4 customtkinter cryptography
 
-# Lancer l'application
 python app.py
 ```
 
 ## 🚀 Utilisation
 
-1. Lancer l'application
-2. Renseigner le nom du produit, l'URL Amazon, le prix cible
-3. Saisir son email Gmail et son mot de passe d'application
-4. Cliquer sur **Ajouter le produit**
-5. Cliquer sur **Démarrer la surveillance**
+1. Au premier lancement, créer un compte avec son email Gmail et un mot de passe d'application Gmail
+2. Se connecter pour accéder à l'interface principale
+3. Ajouter des produits Amazon (nom, URL, prix cible)
+4. Démarrer la surveillance
+5. Recevoir un email dès qu'un prix cible est atteint
 
-L'application vérifiera automatiquement les prix et enverra un email dès qu'un prix cible est atteint.
+## ⚙️ Configuration requise
+
+- Windows 10 ou supérieur
+- Compte Gmail avec [mot de passe d'application](https://myaccount.google.com/apppasswords) activé
 
 ## 👤 Auteur
 
@@ -68,4 +89,4 @@ L'application vérifiera automatiquement les prix et enverra un email dès qu'un
 
 ---
 
-*Projet réalisé dans le cadre de mon apprentissage Python avec un focus sur l'automatisation.*
+*Projet réalisé dans le cadre de mon apprentissage Python avec un focus sur l'automatisation et la sécurité.*
